@@ -1,7 +1,7 @@
 import BradySdk from 'brady-web-sdk';
 
 /**
- * Brady Printer Controller class
+ * Brady Printer Controller class with enhanced debugging
  * Handles communication with the Brady printer SDK and the front end of the website
  */
 class BradyPrinterController {
@@ -11,6 +11,7 @@ class BradyPrinterController {
         this.currentFile = null;
         this.bluetoothDevice = null;
         this.bluetoothServer = null;
+        this.debugMode = true; // Enable detailed logging
         
         // Initialize UI elements
         this.statusIndicator = document.getElementById('statusIndicator');
@@ -25,16 +26,61 @@ class BradyPrinterController {
         this.initializeEventListeners();
         this.checkBluetoothSupport();
         this.addLog('Brady Printer Controller initialized');
+        
+        // Debug: Check if all UI elements were found
+        this.debugUIElements();
+    }
+
+    // Debug method to check UI elements
+    debugUIElements() {
+        const elements = {
+            statusIndicator: this.statusIndicator,
+            statusText: this.statusText,
+            bluetoothBtn: this.bluetoothBtn,
+            discoverBtn: this.discoverBtn,
+            printBtn: this.printBtn,
+            feedBtn: this.feedBtn,
+            cutBtn: this.cutBtn
+        };
+        
+        for (const [name, element] of Object.entries(elements)) {
+            if (!element) {
+                this.addLog(`⚠️ UI Element not found: ${name}`, 'warning');
+            } else {
+                this.addLog(`✅ UI Element found: ${name}`, 'info');
+            }
+        }
     }
 
     // Method to initialize the Brady SDK for use
     initializeSDK() {
         try {
+            this.addLog('🔧 Attempting to initialize Brady SDK...', 'info');
+            
+            // Check if BradySdk is available
+            if (typeof BradySdk === 'undefined') {
+                throw new Error('BradySdk is not defined - check if the library is properly loaded');
+            }
+            
             this.sdk = new BradySdk(this.printerUpdatesCallback.bind(this));
-            this.sdk.initializeEventListeners();
+            
+            // Check if SDK has required methods
+            if (!this.sdk) {
+                throw new Error('SDK initialization returned null/undefined');
+            }
+            
+            this.addLog(`📋 SDK Methods available: ${Object.getOwnPropertyNames(Object.getPrototypeOf(this.sdk)).join(', ')}`, 'info');
+            
+            if (this.sdk.initializeEventListeners) {
+                this.sdk.initializeEventListeners();
+            } else {
+                this.addLog('⚠️ SDK does not have initializeEventListeners method', 'warning');
+            }
+            
             this.addLog('Brady SDK initialized successfully', 'success');
         } catch (error) {
-            this.addLog(`Error initializing Brady SDK: ${error.message}`, 'error');
+            this.addLog(`❌ Error initializing Brady SDK: ${error.message}`, 'error');
+            this.addLog(`Stack trace: ${error.stack}`, 'error');
         }
     }
 
@@ -112,7 +158,7 @@ class BradyPrinterController {
         try {
             // Create image element from file
             const imageElement = await this.createImageElement(this.currentFile);
-            await this.sdk.printImage(imageElement);
+            await this.sdk.printBitmap(imageElement);
             this.addLog('Print job completed successfully', 'success');
         } catch (error) {
             this.addLog(`Print failed: ${error.message}`, 'error');
@@ -162,7 +208,7 @@ class BradyPrinterController {
         this.feedBtn.disabled = true;
 
         try {
-            await this.sdk.feedLabel();
+            await this.sdk.feed();
             this.addLog('Label fed successfully', 'success');
         } catch (error) {
             this.addLog(`Feed failed: ${error.message}`, 'error');
@@ -182,7 +228,7 @@ class BradyPrinterController {
         this.cutBtn.disabled = true;
 
         try {
-            await this.sdk.cutLabel();
+            await this.sdk.cut();
             this.addLog('Label cut successfully', 'success');
         } catch (error) {
             this.addLog(`Cut failed: ${error.message}`, 'error');
