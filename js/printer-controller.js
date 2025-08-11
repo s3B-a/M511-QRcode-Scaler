@@ -256,7 +256,7 @@ class BradyPrinterController {
     checkBluetoothSupport() {
         if (!navigator.bluetooth) {
             this.addLog('Web Bluetooth API is not supported in this browser.');
-            if (this.blutetoothBtn) {
+            if (this.bluetoothBtn) {
                 this.bluetoothBtn.disabled = true;
                 this.bluetoothBtn.textContent = '🚫 Bluetooth Not Supported';
             }
