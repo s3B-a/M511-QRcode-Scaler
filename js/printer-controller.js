@@ -9,10 +9,13 @@ class BradyPrinterController {
         this.sdk = null;
         this.isConnected = false;
         this.currentFile = null;
+        this.bluetoothDevice = null;
+        this.bluetoothServer = null;
         
         // Initialize UI elements
         this.statusIndicator = document.getElementById('statusIndicator');
         this.statusText = document.getElementById('statusText');
+        this.bluetoothBtn = document.getElementById('bluetoothBtn');
         this.discoverBtn = document.getElementById('discoverBtn');
         this.printBtn = document.getElementById('printBtn');
         this.feedBtn = document.getElementById('feedBtn');
@@ -20,6 +23,7 @@ class BradyPrinterController {
         
         this.initializeSDK();
         this.initializeEventListeners();
+        this.checkBluetoothSupport();
         this.addLog('Brady Printer Controller initialized');
     }
 
@@ -51,12 +55,16 @@ class BradyPrinterController {
         
         if (connected) {
             this.statusIndicator.className = 'status-indicator status-connected';
-            this.statusText.textContent = 'Connected';
-            this.addLog('Printer connected successfully', 'success');
+            this.statusText.textContent = 'Connected (Bluetooth)';
+            if (this.bluetoothBtn) {
+                this.bluetoothBtn.textContent = '🔗 Disconnect Bluetooth';
+            }
         } else {
             this.statusIndicator.className = 'status-indicator status-disconnected';
             this.statusText.textContent = 'Disconnected';
-            this.addLog('Printer disconnected', 'warning');
+            if (this.bluetoothBtn) {
+                this.bluetoothBtn.textContent = '📶 Connect Bluetooth';
+            }
         }
         
         // Enable/disable control buttons based on connection status
@@ -191,6 +199,23 @@ class BradyPrinterController {
         this.feedBtn.addEventListener('click', () => this.feedLabel());
         this.cutBtn.addEventListener('click', () => this.cutLabel());
 
+        // Bluetooth listener
+        if (this.bluetoothBtn) {
+            this.bluetoothBtn.addEventListener('click', () => {
+                if (this.isConnected) {
+                    this.disconnectBluetooth();
+                } else {
+                    this.connectBluetooth();
+                }
+            });
+        }
+
+        if (navigator.bluetooth) {
+            navigator.bluetooth.addEventListener('advertisementreceived', (event) => {
+                this.addLog(`Bluetooth advertisement received: ${event.device.name}`);
+            });
+        }
+
         // Listen for file selection changes
         const checkForFile = () => {
             if (window.fileUploadAPI) {
@@ -211,6 +236,10 @@ class BradyPrinterController {
         // SDK event listeners
         if (this.sdk) {
             this.sdk.on('printerStatusChanged', this.printerUpdatesCallback.bind(this));
+            this.sdk.on('bluetoothDisconnected', () => {
+                this.addLog('Bluetooth connection lost', 'warning');
+                this.updateConnectionStatus(false);
+            });
         }
     }
 
@@ -220,6 +249,103 @@ class BradyPrinterController {
             window.fileUploadAPI.addLog(message, type);
         } else {
             console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    }
+
+    // Method to check if Web Bluetooth is supported
+    checkBluetoothSupport() {
+        if (!navigator.bluetooth) {
+            this.addLog('Web Bluetooth API is not supported in this browser.');
+            if (this.bluetoothBtn) {
+                this.bluetoothBtn.disabled = true;
+                this.bluetoothBtn.textContent = '🚫 Bluetooth Not Supported';
+            }
+            return false;
+        }
+    }
+
+    // Method to connect via Bluetooth
+    async connectBluetooth() {
+        if (!navigator.bluetooth) {
+            this.addLog('Bluetooth not supported', 'error');
+            return;
+        }
+
+        this.addLog('Connecting to Bluetooth printer...');
+        this.bluetoothBtn.disabled = true;
+        this.statusIndicator.className = 'status-indicator status-printing';
+        this.statusText.textContent = 'Connecting...';
+
+        try {
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [
+                    { namePrefix: 'Brady' },
+                    { namePrefix: 'M511' },
+                    { namePrefix: 'BMP' }
+                ],
+                optionalServices: [
+                    '000018f0-0000-1000-8000-00805f9b34fb', // Brady service UUID (example)
+                    '0000180f-0000-1000-8000-00805f9b34fb', // Battery service
+                    '0000180a-0000-1000-8000-00805f9b34fb'  // Device information
+                ]
+            });
+
+            this.addLog(`Found device: ${device.name}`);
+            this.bluetoothDevice = device;
+
+            const server = await device.gatt.connect();
+
+            this.bluetoothServer = server;
+            this.addLog('Connected to GATT server', 'success');
+
+            await this.initializeBradySDKWithBluetooth(device);
+            this.updateConnectionStatus(true);
+            this.addLog('Bluetooth connection established successfully', 'success');
+        } catch (error) {
+            this.addLog(`Bluetooth connection failed: ${error.message}`, 'error');
+            this.updateConnectionStatus(false);
+        } finally {
+            this.bluetoothBtn.disabled = false;
+        }
+    }
+
+    // Initialize Brady SDK w Bluteooth device
+    async initializeBradySDKWithBluetooth(device) {
+        try {
+            if(this.sdk && this.sdk.connectBluetooth) {
+                await this.sdk.connectBluetooth(device);
+            } else if (this.sdk && this.sdk.connect) {
+                await this.sdk.connect({
+                    type: 'bluetooth',
+                    device: device
+                });
+            } else {
+                this.sdk = new BradySdk({
+                    connectionType: 'bluetooth',
+                    device: device,
+                    callback: this.printerUpdatesCallback.bind(this)
+                });
+            }
+            this.addLog('Brady SDK initialized with Bluetooth', 'success');
+        } catch (error) {
+            this.addLog(`Failed to initialize Brady SDK with Bluetooth: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+
+    // Disconnect Bluetooth
+    async disconnectBluetooth() {
+        try {
+            if (this.bluetoothServer && this.bluetoothServer.connected) {
+                await this.bluetoothServer.disconnect();
+                this.addLog('Bluetooth disconnected', 'success');
+            }
+            if (this.sdk && this.sdk.disconnect) {
+                await this.sdk.disconnect();
+            }
+            this.updateConnectionStatus(false);
+        } catch (error) {
+            this.addLog(`Disconnect error: ${error.message}`, 'error');
         }
     }
 }
