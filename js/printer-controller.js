@@ -206,7 +206,7 @@ class BradyPrinterController {
         };
 
         // Check for file changes periodically
-        setInterval(checkForFile, 500);
+        setInterval(checkForFile, 2000);
 
         // SDK event listeners
         if (this.sdk) {
