@@ -313,7 +313,7 @@ class BradyPrinterController {
     async initializeBradySDKWithBluetooth(device) {
         try {
             if(this.sdk && this.sdk.connectBluetooth) {
-                await this.sdk.connectBluetooth(device)
+                await this.sdk.connectBluetooth(device);
             } else if (this.sdk && this.sdk.connect) {
                 await this.sdk.connect({
                     type: 'bluetooth',
