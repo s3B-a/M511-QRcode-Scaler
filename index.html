@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M511 Printer Control</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "brady-web-sdk": "./node_modules/@bradycorporation/brady-web-sdk/dist/bundle.js"
+            }
+        }
+    </script>
+
+    <div class="container">
+        <div class="header">
+            <h1>📄 M511 Printer Control</h1>
+            <p>Enhanced QR Code Printing with File Upload Support</p>
+        </div>
+
+        <div class="main-content">
+            <!-- File Upload Section -->
+            <div class="card">
+                <h2>
+                    📁 Upload File
+                </h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📎</div>
+                    <div class="upload-text">Drop files here or click to browse</div>
+                    <div class="upload-subtext">Supports images (PNG, JPG, GIF, SVG)</div>
+                    <input type="file" class="file-input" id="fileInput" accept="image/*,.pdf,.txt">
+                </div>
+                
+                <div class="preview-area" id="previewArea">
+                    <img class="preview-image" id="previewImage" alt="Preview">
+                </div>
+
+                <div class="file-info" id="fileInfo">
+                    <h4>File Information</h4>
+                    <div class="file-details" id="fileDetails"></div>
+                </div>
+            </div>
+
+            <!-- Printer Control Section -->
+            <div class="card">
+                <h2>
+                    🖨️ Printer Control
+                </h2>
+                <div style="margin-bottom: 20px;">
+                    <button class="button" id="discoverBtn">
+                        🔍 Discover Printer
+                    </button>
+                    <button class="button" id="printBtn" disabled>
+                        🖨️ Print Image
+                    </button>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <button class="button secondary" id="feedBtn" disabled>
+                        ⏭️ Feed Label
+                    </button>
+                    <button class="button secondary" id="cutBtn" disabled>
+                        ✂️ Cut Label
+                    </button>
+                </div>
+
+                <div>
+                    <strong>Printer Status:</strong>
+                    <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status and Logs Section -->
+        <div class="status-area">
+            <h2>📊 System Status & Logs</h2>
+            <div class="log-area" id="logArea">
+                <div>M511 Printer Control System Initialized</div>
+                <div>Upload an image file to get started</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./js/printer-controller.js"></script>
+    <script src="./js/file-upload.js"></script>
+</body>
+</html>

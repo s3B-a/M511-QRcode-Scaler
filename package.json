@@ -1,0 +1,15 @@
+{
+  "name": "m511-printer-mod",
+  "version": "1.0.0",
+  "description": "A module for M511 printer integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./js/https-server.js",
+    "install-openssl-help": "node -e \"console.log('OpenSSL Installation Help (if needed):'); console.log('Windows: Download from https://slproweb.com/products/Win32OpenSSL.html'); console.log('macOS: brew install openssl'); console.log('Linux: sudo apt-get install openssl (Ubuntu/Debian) or sudo yum install openssl (RHEL/CentOS)'); console.log('\\nNote: This app now uses Node.js selfsigned package, so OpenSSL is not required!');\""
+  },
+  "dependencies": {
+    "@bradycorporation/brady-web-sdk": "^3.1.2",
+    "express": "^4.17.1",
+    "selfsigned": "^2.1.1"
+  }
+}
