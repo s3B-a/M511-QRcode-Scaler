@@ -285,10 +285,15 @@ let fileUploadHandler;
 document.addEventListener('DOMContentLoaded', () => {
     fileUploadHandler = new FileUploadHandler();
     
-    // Export API for printer controller
+    // Export API for printer controller with enhanced functionality
     window.fileUploadAPI = {
         getCurrentFile: () => fileUploadHandler.getCurrentFile(),
         addLog: (message, type) => fileUploadHandler.addLog(message, type),
-        updatePrintButton: (enabled) => fileUploadHandler.updatePrintButton(enabled)
+        updatePrintButton: (enabled) => fileUploadHandler.updatePrintButton(enabled),
+        getConvertedImage: () => fileUploadHandler.convertedImage,
+        hasConvertedImage: () => !!fileUploadHandler.convertedImage
     };
+    
+    // Export the file upload handler instance for direct access
+    window.fileUploadHandler = fileUploadHandler;
 });
