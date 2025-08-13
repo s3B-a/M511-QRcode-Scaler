@@ -50,9 +50,7 @@
                     🖨️ Printer Control
                 </h2>
                 <div style="margin-bottom: 20px;">
-                    <button class="button" id="discoverBtn">
-                        🔍 Discover Printer (Network)
-                    </button>
+
                     <button class="button" id="bluetoothBtn">
                         📶 Connect Bluetooth
                     </button>
@@ -80,15 +78,12 @@
                     <button class="button secondary" id="statusBtn" disabled>
                         📊 Check Status
                     </button>
-                    <button class="button secondary" id="forceInterface0Btn" disabled>
-                        🚨 Force Interface 0
-                    </button>
                 </div>
 
                 <div>
                     <strong>Printer Status:</strong>
-                    <span class="status-indicator status-disconnected" id="statusIndicator"></span>
                     <span id="statusText">Disconnected</span>
+                    <span class="status-indicator status-disconnected" id="statusIndicator"></span>
                 </div>
             </div>
         </div>
@@ -103,7 +98,7 @@
         </div>
     </div>
 
-    <script type="module" src="./js/printer-controller.js"></script>
-    <script src="./js/file-upload.js"></script>
+    <script type="module" src="js/printer-controller.js"></script>
+    <script src="js/file-upload.js"></script>
 </body>
 </html>

@@ -30,7 +30,7 @@ class FileUploadHandler {
         script.onload = () => {
             // Set worker source
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            this.addLog('PDF.js loaded successfully', 'success');
+            this.addLog('PDF.js from cdnjs loaded successfully', 'success');
         };
         script.onerror = () => {
             this.addLog('Failed to load PDF.js - PDF conversion will not be available', 'warning');
