@@ -35,6 +35,7 @@ class BradyPrinterController {
         this.addLog('Brady Printer Controller initialized');
     }
 
+    // Initialize the Brady SDK
     initializeSDK() {
         // Check if Brady SDK is loaded globally
         if (typeof window.BradySdk !== 'undefined') {
@@ -50,6 +51,7 @@ class BradyPrinterController {
         }
     }
 
+    // Enable or disable buttons based on connection status
     buttonStatus(buttonName, status) {
         const interactionButtons = [
             this.feedBtn,
@@ -79,6 +81,7 @@ class BradyPrinterController {
         }
     }
 
+    // Create event listeners for UI elements
     createListeners() {
         this.bluetoothBtn.addEventListener('click', () => this.connectBluetooth());
         this.usbBtn.addEventListener('click', () => this.connectUSB());
@@ -88,6 +91,7 @@ class BradyPrinterController {
         this.statusBtn.addEventListener('click', () => this.checkStatus());
     }
 
+    // Connect to the USB printer via usb-connection.js
     connectUSB() {
         this.addLog('Attempting USB connection...', 'info');
 
@@ -105,6 +109,7 @@ class BradyPrinterController {
         });
     }
 
+    // Send a command to the USB printer via usb-connection.js
     async sendCommandUSB(command) {
         if (this.usb) {
             try {

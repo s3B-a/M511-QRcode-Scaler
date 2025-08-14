@@ -86,6 +86,7 @@ class USBConnection {
         }
     }
 
+    // Send the uploaded file to the printer
     async printUploadedFile() {
         try {
             let imageSource;
@@ -112,17 +113,19 @@ class USBConnection {
         }
     }
 
+    // Send raw data to the USB device
     async sendRawData(cmdData) {
         try {
-            const outEndpoint = this.interface.alternate.endpoints.find(
-                endpoint => endpoint.direction === 'out'
+            // Find the IN endpoint for sending data
+            const inEndpoint = this.interface.alternate.endpoints.find(
+                endpoint => endpoint.direction === 'in'
             );
 
-            if(!outEndpoint) {
-                throw new Error('No OUT endpoint found');
+            if(!inEndpoint) {
+                throw new Error('No IN endpoint found');
             }
 
-            const result = await this.device.transferOut(outEndpoint.endpointNumber, cmdData);
+            const result = await this.device.transferIn(inEndpoint.endpointNumber, cmdData);
             console.log(`Command sent, result: ${result.bytesWritten} bytes`);
             return result;
         } catch (error) {

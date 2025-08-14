@@ -1,4 +1,3 @@
 node_modules/
 package-lock.json
 certs/
-printer-controller-clean.js

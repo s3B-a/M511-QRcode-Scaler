@@ -1,14 +1,20 @@
+
+/**
+ * This class handles data processing for the Brady printer
+ */
 class processData {
     constructor() {
         this.data = [];
     }
 
+    // Convert an image to a bitmap format as Brady printers require it
     async convertImageToBitmap(imageSource) {
         return new Promise((resolve, reject) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
 
+            // Load the image and process it
             img.onload = () => {
                 const maxWidth = 384;
                 const maxHeight = 300;
@@ -40,6 +46,7 @@ class processData {
         });
     }
 
+    // Converts an image to a bitmap
     convertToBitmap(ctx, width, height) {
         const imageData = ctx.getImageData(0, 0, width, height);
         const pixels = imageData.data;
@@ -51,6 +58,7 @@ class processData {
         let bitIndex = 0;
         let currentByte = 0;
 
+        // Iterate over every pixel to convert it to monochrome bitmap
         for(let y = 0; y < height; y++) {
             for(let x = 0; x < width; x++) {
                 const pixelIndex = (y * width + x) * 4;
@@ -75,6 +83,7 @@ class processData {
         return { data: bitmapData, width, height, bytesPerRow };
     }
 
+    // Generate ESC/POS commands for printing the bitmap
     generateImageCommands(bitmapData) {
         const commands = [];
 
@@ -100,6 +109,7 @@ class processData {
         return new Uint8Array(commands);
     }
 
+    // Process the currently uploaded file and return print commands
     async processCurrentFile() {
         if(!window.fileUploadAPI) {
             throw new Error('File upload API not available');

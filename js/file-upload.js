@@ -266,7 +266,6 @@ class FileUploadHandler {
         return lines;
     }
 
-    // Returns the current uploaded file
     getCurrentFile() {
         return this.currentFile;
     }
