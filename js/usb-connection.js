@@ -8,6 +8,7 @@ class USBConnection {
         this.device = null;
         this.interface = null;
         this.dataProcessor = new processData();
+        this.responseTimeout = 5000;
 
         this.bradyVendorId = 0x0e2e;
         
@@ -44,9 +45,25 @@ class USBConnection {
             await this.device.selectConfiguration(1);
             await this.device.claimInterface(this.interface);
             console.log(`USB device connected and interface claimed: ${this.getInterface()}`);
+
+            this.startResponseListener();
         } catch (error) {
             console.error('Error connecting to USB device:', error);
         }
+    }
+
+    async disconnect() {
+        if(this.device && this.device.opened) {
+            try {
+                await this.device.releaseInterface(this.interface.interfaceNumber);
+                await this.device.close();
+                console.log('USB device disconnected');
+            } catch (error) {
+                console.error('Error disconnecting USB device:', error);
+            }
+        }
+        this.device = null;
+        this.interface = null;
     }
 
     // Send a command to the USB device while converting it to a Uint8Array (Hex format)
@@ -77,12 +94,24 @@ class USBConnection {
                 cmdData = new Uint8Array([0x1D, 0x4C, 0x00]); // feed
                 console.log(`attempting to feed ${cmdData}`);
                 break;
+            case 'status':
+                // Request printer status and wait for response
+                return await this.sendCommandWithResponse('status');
             default:
                 throw new Error('Unknown command: ' + command);
         }
 
-        if (cmdData) {
-            return await this.sendRawData(cmdData);
+        if(cmdData) {
+            const result = await this.sendRawData(cmdData);
+            
+            // For certain commands, automatically read response
+            if(['print', 'cut', 'feed'].includes(command)) {
+                setTimeout(async () => {
+                    await this.readResponse();
+                }, 100); // Small delay to allow printer to process
+            }
+            
+            return result;
         }
     }
 
@@ -116,22 +145,199 @@ class USBConnection {
     // Send raw data to the USB device
     async sendRawData(cmdData) {
         try {
-            // Find the IN endpoint for sending data
-            const inEndpoint = this.interface.alternate.endpoints.find(
-                endpoint => endpoint.direction === 'in'
+            // Find the OUT endpoint for sending data
+            const outEndpoint = this.interface.alternate.endpoints.find(
+                endpoint => endpoint.direction === 'out'
             );
 
-            if(!inEndpoint) {
-                throw new Error('No IN endpoint found');
+            if(!outEndpoint) {
+                throw new Error('No OUT endpoint found');
             }
 
-            const result = await this.device.transferIn(inEndpoint.endpointNumber, cmdData);
-            console.log(`Command sent, result: ${result.bytesWritten} bytes`);
+            const result = await this.device.transferOut(outEndpoint.endpointNumber, cmdData);
+            console.log(`Data sent: ${result.bytesWritten} bytes`);
             return result;
         } catch (error) {
             console.error('Error sending command to USB device:', error);
             throw error;
         }
+    }
+
+    
+    async startResponseListener() {
+        if(!this.device || !this.interface) return ;
+
+        const inEndpoint = this.interface.alternate.endpoints.find(
+            endpoint => endpoint.direction === 'in'
+        );
+
+        if(!inEndpoint) {
+            console.warn('No IN endpoint found for USB device');
+            return;
+        }
+        this.listenForResponses(inEndpoint);
+    }
+
+    async listenForResponses(endpoint) {
+        while(this.device && this.device.opened) {
+            try {
+                const result = await this.device.transferIn(endpoint.endpointNumber, 64);
+                if(result.data && result.data.byteLength > 0) {
+                    this.handlePrinterResponse(result.data);
+                }
+            } catch (error) {
+                if (!error.message.includes('timeout') && !error.message.includes('LIBUSB_ERROR_TIMEOUT')) {
+                    console.warn('Response listener error:', error);
+                }
+                await this.delay(100);
+            }
+        }
+    }
+
+    handlePrinterResponse(data) {
+        const response = new Uint8Array(data);
+        const responseHex = Array.from(response).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log(`Printer response: [${response.length} bytes] ${responseHex}`);
+
+        const status = this.parsePrinterStatus(response);
+        if(status) {
+            console.log(`Printer status: ${status}`);
+        }
+
+        window.dispatchEvent(new CustomEvent('printerResponse', {
+            detail: {
+                data: response,
+                hex: responseHex,
+                status: status
+            }
+        }));
+    }
+
+    parsePrinterStatus(response) {
+        if(response.length === 0) return null;
+
+        switch(response[0]) {
+            case 0x12: // DLE
+                if(response.length >= 2) {
+                    switch(response[1]) {
+                        case 0x04: return 'Real-time status';
+                        case 0x05: return 'Real-time printer status';
+                        case 0x06: return 'Real-time paper status';
+                        default: return `DLE command: 0x${response[1].toString(16)}`;
+                    }
+                }
+                break;
+            case 0x10: // Data Link Escape
+                return 'Status response';
+            case 0x00:
+                return 'Ready';
+            case 0x01:
+                return 'Paper out';
+            case 0x02:
+                return 'Cover open';
+            case 0x04:
+                return 'Cutter error';
+            case 0x08:
+                return 'Print error';
+            default:
+                return `Unknown status: 0x${response[0].toString(16)}`;
+        }
+        return null;
+    }
+
+    async readResponse(expectedBytes = 64, timeout = this.responseTimeout) {
+        if(!this.device || !this.interface) {
+            throw new Error('USB device or interface not available');
+        }
+
+        const inEndpoint = this.interface.alternate.endpoints.find(
+            endpoint => endpoint.direction === 'in'
+        );
+
+        if(!inEndpoint) {
+            throw new Error('No IN endpoint found');
+        }
+
+        try {
+            const result = await Promise.race([
+                this.device.transferIn(inEndpoint.endpointNumber, expectedBytes),
+                this.timeoutPromise(timeout)
+            ]);
+
+            if(result.data && result.data.byteLength > 0) {
+                const response = new Uint8Array(result.data);
+                console.log(`Response received: [${response.length} bytes] 
+                            ${Array.from(response).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+                return response;
+            }
+            return null;
+        } catch (error) {
+            if(error.message === 'timeout') {
+                console.warn('No response received (timed out)');
+                return null;
+            }
+            throw error;
+        }
+    }
+
+    async sendCommandWithResponse(command) {
+        if(!this.device || !this.interface) {
+            throw new Error('USB device or interface not available');
+        }
+        if(!command) {
+            throw new Error('Invalid command');
+        }
+
+        let cmdData
+        switch(command) {
+            case 'status':
+                // Request printer status
+                cmdData = new Uint8Array([0x10, 0x04, 0x01]); // DLE EOT 1
+                break;
+            case 'print':
+                if(window.fileUploadAPI && (window.fileUploadAPI.getCurrentFile() || window.fileUploadAPI.hasConvertedImage())) {
+                    console.log('Processing uploaded file for printing...');
+                    return await this.printUploadedFileWithResponse();
+                } else {
+                    cmdData = new Uint8Array([0x1B, 0x40, 0x1D, 0x6B, 0x01, 0x00]);
+                }
+                break;
+            case 'cut':
+                cmdData = new Uint8Array([0x1D, 0x69, 0x00]);
+                break;
+            case 'feed':
+                cmdData = new Uint8Array([0x1D, 0x4C, 0x00]);
+                break;
+            default:
+                throw new Error(`Unknown command: ${command}`);
+        }
+
+        if(cmdData) {
+            await this.sendRawData(cmdData);
+            const response = await this.readResponse();
+            return response;
+        }
+    }
+
+    async printUploadedFileWithResponse() {
+        try {
+            const result = await this.printUploadedFile();
+            const response = await this.readResponse();
+            return { result, response };
+        } catch (error) {
+            console.error('Error printing uploaded file:', error);
+            throw error;
+        }
+    }
+
+    timeoutPromise(ms) {
+        return new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('timeout')), ms)
+        });
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // Determine the printer model based on the received productID
