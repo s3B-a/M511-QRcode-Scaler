@@ -52,6 +52,7 @@ class USBConnection {
         }
     }
 
+    // Disconnect from the USB device
     async disconnect() {
         if(this.device && this.device.opened) {
             try {
@@ -163,9 +164,9 @@ class USBConnection {
         }
     }
 
-    
+    // Start listening for responses from the printer
     async startResponseListener() {
-        if(!this.device || !this.interface) return ;
+        if(!this.device || !this.interface) return;
 
         const inEndpoint = this.interface.alternate.endpoints.find(
             endpoint => endpoint.direction === 'in'
@@ -178,6 +179,7 @@ class USBConnection {
         this.listenForResponses(inEndpoint);
     }
 
+    // Listen for responses from the printer
     async listenForResponses(endpoint) {
         while(this.device && this.device.opened) {
             try {
@@ -194,6 +196,7 @@ class USBConnection {
         }
     }
 
+    // handle printer responses
     handlePrinterResponse(data) {
         const response = new Uint8Array(data);
         const responseHex = Array.from(response).map(b => b.toString(16).padStart(2, '0')).join(' ');
@@ -213,6 +216,7 @@ class USBConnection {
         }));
     }
 
+    // Parse through the printer status
     parsePrinterStatus(response) {
         if(response.length === 0) return null;
 
@@ -245,6 +249,7 @@ class USBConnection {
         return null;
     }
 
+    // read responses from the printer with a specified timeout
     async readResponse(expectedBytes = 64, timeout = this.responseTimeout) {
         if(!this.device || !this.interface) {
             throw new Error('USB device or interface not available');
@@ -280,6 +285,8 @@ class USBConnection {
         }
     }
 
+    // send a command, this is different from the sendCommand() method as this uses both
+    // the command and the uploaded file sent from the user
     async sendCommandWithResponse(command) {
         if(!this.device || !this.interface) {
             throw new Error('USB device or interface not available');
@@ -319,6 +326,7 @@ class USBConnection {
         }
     }
 
+    // Print the uploaded file and await a response
     async printUploadedFileWithResponse() {
         try {
             const result = await this.printUploadedFile();
@@ -332,7 +340,7 @@ class USBConnection {
 
     timeoutPromise(ms) {
         return new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('timeout')), ms)
+            setTimeout(() => reject(new Error('timeout')), ms) // Reject after the specified timeout
         });
     }
 
